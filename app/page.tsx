@@ -17,6 +17,7 @@ export default function Home() {
   ]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -60,12 +61,31 @@ export default function Home() {
 
   return (
     <div className="flex h-screen bg-gray-900 text-gray-100 font-sans overflow-hidden">
-      {/* Sidebar - Hidden on mobile for now, can be toggleable */}
-      <aside className="w-64 bg-black border-r border-gray-800 hidden md:flex flex-col">
-        <div className="p-4">
-          <Button variant="outline" className="w-full justify-start gap-2 border-gray-700 hover:bg-gray-800 text-gray-200" onClick={() => setMessages([{ role: "assistant", content: "Ready to start a new training session." }])}>
+      {/* Sidebar Overlay for Mobile */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-20 md:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside className={cn(
+        "bg-black border-r border-gray-800 flex-col transition-all duration-300 ease-in-out z-30",
+        "fixed inset-y-0 left-0 w-64 md:relative md:translate-x-0 md:flex",
+        isSidebarOpen ? "translate-x-0 flex" : "-translate-x-full hidden"
+      )}>
+        <div className="p-4 flex items-center justify-between">
+          <Button variant="outline" className="flex-1 justify-start gap-2 border-gray-700 hover:bg-gray-800 text-gray-200" onClick={() => {
+            setMessages([{ role: "assistant", content: "Ready to start a new training session." }]);
+            setIsSidebarOpen(false);
+          }}>
             <Plus size={16} />
             New Chat
+          </Button>
+          {/* Close button for mobile */}
+          <Button variant="ghost" size="icon" className="md:hidden text-gray-400" onClick={() => setIsSidebarOpen(false)}>
+            <Menu size={20} />
           </Button>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
@@ -83,9 +103,9 @@ export default function Home() {
       </aside>
 
       {/* Main Chat Area */}
-      <main className="flex-1 flex flex-col relative">
-        <header className="h-14 border-b border-gray-800 flex items-center justify-between px-4 md:hidden bg-gray-900 z-10">
-          <Button variant="ghost" size="icon" className="text-gray-400">
+      <main className="flex-1 flex flex-col relative w-full">
+        <header className="h-14 border-b border-gray-800 flex items-center justify-between px-4 md:hidden bg-gray-900 z-10 shrink-0">
+          <Button variant="ghost" size="icon" className="text-gray-400" onClick={() => setIsSidebarOpen(true)}>
             <Menu size={20} />
           </Button>
           <span className="font-semibold text-sm">NeuroForge</span>
