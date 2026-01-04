@@ -1,13 +1,13 @@
 # Systems
 .DS_Store
 
-# Frontend
-frontend/node_modules/
-frontend/.next/
-frontend/out/
-frontend/build/
-frontend/.env
-frontend/.env.local
+# Frontend (Root)
+node_modules/
+.next/
+out/
+build/
+.env
+.env.local
 
 # Backend
 backend/__pycache__/
