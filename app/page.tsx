@@ -1,3 +1,5 @@
+"use client";
+
 import { useRouter } from "next/navigation";
 import { auth, loginWithGoogle } from "@/lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
