@@ -48,7 +48,7 @@ export default function LandingPage() {
         </div>
         <div className="flex items-center gap-6">
           <a href="https://github.com/emanuelediluzio/NeuroForge" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">GitHub</a>
-          {user && (
+          {user ? (
             <div className="hidden md:flex items-center gap-2">
               {user.photoURL ? (
                 <img src={user.photoURL} alt="User" className="w-8 h-8 rounded-full border border-gray-700" />
@@ -58,6 +58,15 @@ export default function LandingPage() {
                 </div>
               )}
             </div>
+          ) : (
+            <Button
+              variant="ghost"
+              onClick={handleLogin}
+              disabled={loading}
+              className="text-gray-300 hover:text-white hover:bg-white/10"
+            >
+              Login
+            </Button>
           )}
         </div>
       </nav>
