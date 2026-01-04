@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Terminal, Cpu, Shield } from "lucide-react";
+import { ArrowRight, Terminal, Cpu, Shield, Brain } from "lucide-react";
 
 export default function LandingPage() {
   return (
@@ -8,17 +8,15 @@ export default function LandingPage() {
 
       {/* Navigation */}
       <nav className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center text-xs font-bold">NF</div>
-          <span className="text-lg font-semibold tracking-tight">NeuroForge</span>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center">
+            <Brain className="w-5 h-5 text-green-500" />
+          </div>
+          <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">NeuroForge</span>
         </div>
-        <div className="flex items-center gap-4">
-          <Link href="https://github.com/emanuelediluzio/NeuroForge" target="_blank" className="text-sm text-gray-400 hover:text-white transition-colors">GitHub</Link>
-          <Link href="/chat">
-            <Button variant="secondary" className="bg-white text-black hover:bg-gray-200">
-              Launch Studio
-            </Button>
-          </Link>
+        <div className="flex items-center gap-6">
+          <Link href="https://github.com/emanuelediluzio/NeuroForge" target="_blank" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">GitHub</Link>
+          {/* Launch Studio button removed as requested */}
         </div>
       </nav>
 
@@ -45,12 +43,12 @@ export default function LandingPage() {
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
             <Link href="/chat">
-              <Button size="lg" className="h-12 px-8 text-base bg-green-600 hover:bg-green-700 text-white border-0">
+              <Button size="lg" className="h-12 px-8 text-base bg-green-600 hover:bg-green-700 text-white border-0 font-medium">
                 Start Training <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
             </Link>
             <Link href="https://github.com/emanuelediluzio/NeuroForge" target="_blank">
-              <Button variant="outline" size="lg" className="h-12 px-8 text-base border-gray-700 hover:bg-white/5 hover:text-white">
+              <Button variant="outline" size="lg" className="h-12 px-8 text-base bg-transparent border-gray-700 text-gray-200 hover:bg-gray-800 hover:text-white hover:border-gray-600">
                 View Documentation
               </Button>
             </Link>
