@@ -1,8 +1,38 @@
-import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { auth, loginWithGoogle } from "@/lib/firebase";
+import { onAuthStateChanged } from "firebase/auth";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Terminal, Cpu, Shield, Brain } from "lucide-react";
+import { ArrowRight, Terminal, Cpu, Shield, Brain, Loader2 } from "lucide-react";
 
 export default function LandingPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        // Optional: Auto redirect if already logged in?
+        // router.push("/chat");
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
+
+  const handleLogin = async () => {
+    setLoading(true);
+    try {
+      await loginWithGoogle();
+      router.push("/chat");
+    } catch (error) {
+      console.error("Login failed", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-black text-white font-sans selection:bg-green-500/30">
 
@@ -15,8 +45,18 @@ export default function LandingPage() {
           <span className="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">NeuroForge</span>
         </div>
         <div className="flex items-center gap-6">
-          <Link href="https://github.com/emanuelediluzio/NeuroForge" target="_blank" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">GitHub</Link>
-          {/* Launch Studio button removed as requested */}
+          <a href="https://github.com/emanuelediluzio/NeuroForge" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-gray-400 hover:text-white transition-colors">GitHub</a>
+          {user && (
+            <div className="hidden md:flex items-center gap-2">
+              {user.photoURL ? (
+                <img src={user.photoURL} alt="User" className="w-8 h-8 rounded-full border border-gray-700" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center text-xs text-white">
+                  {user.displayName?.charAt(0) || "U"}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </nav>
 
@@ -42,16 +82,21 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
-            <Link href="/chat">
-              <Button size="lg" className="h-12 px-8 text-base bg-green-600 hover:bg-green-700 text-white border-0 font-medium">
-                Start Training <ArrowRight className="ml-2 w-4 h-4" />
-              </Button>
-            </Link>
-            <Link href="https://github.com/emanuelediluzio/NeuroForge" target="_blank">
+            <Button
+              size="lg"
+              className="h-12 px-8 text-base bg-green-600 hover:bg-green-700 text-white border-0 font-medium min-w-[180px]"
+              onClick={user ? () => router.push("/chat") : handleLogin}
+              disabled={loading}
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : user ? "Enter Studio" : "Start Training"}
+              {!loading && <ArrowRight className="ml-2 w-4 h-4" />}
+            </Button>
+
+            <a href="https://github.com/emanuelediluzio/NeuroForge" target="_blank" rel="noopener noreferrer">
               <Button variant="outline" size="lg" className="h-12 px-8 text-base bg-transparent border-gray-700 text-gray-200 hover:bg-gray-800 hover:text-white hover:border-gray-600">
                 View Documentation
               </Button>
-            </Link>
+            </a>
           </div>
         </div>
       </main>
