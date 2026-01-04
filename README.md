@@ -2,7 +2,6 @@
 
 **NeuroForge** is a sovereign AI fine-tuning studio. It provides a sleek, ChatGPT-style interface (hosted on Vercel or locally) that connects to a **local Python Orchestrator** running on your GPU machine.
 
-![NeuroForge Architecture](public/window.svg)
 
 ## Architecture
 
