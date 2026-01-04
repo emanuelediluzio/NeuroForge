@@ -1,15 +1,19 @@
 from fastapi import FastAPI, BackgroundTasks, HTTPException
-from pydantic import BaseModel
-import uvicorn
-import asyncio
-import uuid
-import random
-from typing import Dict
-
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List, Optional
+import time
+import random
+
+# Import Configuration
+try:
+    from config import ORCHESTRATOR_MODEL_PATH
+except ImportError:
+    ORCHESTRATOR_MODEL_PATH = "MOCK_MODE"
 
 app = FastAPI(title="NeuroForge Backend")
 
+# CORS Setup
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
@@ -18,53 +22,44 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory job store
-jobs: Dict[str, Dict] = {}
+# Types
+class ChatMessage(BaseModel):
+    role: str
+    content: str
 
-class TrainingRequest(BaseModel):
-    model_id: str
-    dataset_path: str
+class ChatRequest(BaseModel):
+    message: str
+    history: List[ChatMessage]
 
-class TrainingStatus(BaseModel):
-    job_id: str
-    status: str
-    progress: int
-    logs: list[str]
+class ChatResponse(BaseModel):
+    response: str
 
-async def mock_training_loop(job_id: str):
-    """Simulates a long-running training process."""
-    jobs[job_id]["status"] = "training"
-    for i in range(0, 101, 10):
-        jobs[job_id]["progress"] = i
-        jobs[job_id]["logs"].append(f"Step {i*10}: Loss {random.uniform(0.1, 2.0):.4f}")
-        await asyncio.sleep(2)  # Simulate work
+# Mock Orchestrator Logic
+def generate_mock_response(message: str):
+    message = message.lower()
+    if "train" in message or "finetune" in message:
+        return "I can help you with that. Please specify the dataset path and the base model you'd like to use."
+    elif "dataset" in message:
+        return "Got it. I've located the dataset. Shall I start the training process with default parameters (LoRA, r=16)?"
+    elif "yes" in message or "start" in message:
+        return "Initiating training run #482... [System: executed `trainer.py --model llama3 --data /tmp/data.json`]\n\nTraining started successfully."
+    else:
+        return f"I am running in Orchestrator Mode (Model Path: {ORCHESTRATOR_MODEL_PATH}).\n\nI am ready to manage your training infrastructure. What would you like to do?"
+
+@app.post("/chat", response_model=ChatResponse)
+async def chat_endpoint(req: ChatRequest):
+    # In a real implementation, this would call the LLM loaded from ORCHESTRATOR_MODEL_PATH
     
-    jobs[job_id]["status"] = "completed"
-    jobs[job_id]["logs"].append("Training finished successfully. Model saved.")
+    # Simulate inference delay of a local LLM
+    time.sleep(1.5) 
+    
+    response_text = generate_mock_response(req.message)
+    return {"response": response_text}
 
 @app.get("/")
 def read_root():
-    return {"status": "online", "service": "Local AI Training Backend"}
-
-@app.post("/train")
-async def start_training(req: TrainingRequest, background_tasks: BackgroundTasks):
-    job_id = str(uuid.uuid4())
-    jobs[job_id] = {
-        "id": job_id,
-        "model_id": req.model_id,
-        "dataset": req.dataset_path,
-        "status": "pending",
-        "progress": 0,
-        "logs": ["Job created. Initializing environment..."]
-    }
-    background_tasks.add_task(mock_training_loop, job_id)
-    return {"job_id": job_id, "status": "started"}
-
-@app.get("/status/{job_id}")
-def get_status(job_id: str):
-    if job_id not in jobs:
-        raise HTTPException(status_code=404, detail="Job not found")
-    return jobs[job_id]
+    return {"status": "online", "model_path": ORCHESTRATOR_MODEL_PATH}
 
 if __name__ == "__main__":
+    import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

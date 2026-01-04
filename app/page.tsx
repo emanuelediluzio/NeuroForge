@@ -1,203 +1,163 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { ModelSelector } from "@/components/model-selector";
-import { AIModel } from "@/types";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { startTraining, getTrainingStatus, TrainingStatus } from "@/lib/api";
+import { Send, Bot, User, Menu, Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+}
 
 export default function Home() {
-  const [step, setStep] = useState(1);
-  const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
-  const [datasetPath, setDatasetPath] = useState("");
+  const [messages, setMessages] = useState<Message[]>([
+    { role: "assistant", content: "Hello! I am NeuroForge. I can help you train your own AI models. How can I assist you today?" }
+  ]);
+  const [input, setInput] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Training State
-  const [isTraining, setIsTraining] = useState(false);
-  const [trainingStatus, setTrainingStatus] = useState<TrainingStatus | null>(null);
-  const [jobId, setJobId] = useState<string | null>(null);
-
-  // Polling Logic
-  useEffect(() => {
-    if (!jobId) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const status = await getTrainingStatus(jobId);
-        setTrainingStatus(status);
-        if (status.status === 'completed' || status.status === 'failed') {
-          clearInterval(interval);
-        }
-      } catch (e) {
-        console.error("Polling error", e);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [jobId]);
-
-  const handleModelSelect = (model: AIModel) => {
-    setSelectedModel(model);
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleStartTraining = async () => {
-    if (!selectedModel) return;
-    setIsTraining(true);
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (!input.trim()) return;
+
+    const userMsg: Message = { role: "user", content: input };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput("");
+    setIsTyping(true);
+
     try {
-      const { job_id } = await startTraining(selectedModel.id, datasetPath);
-      setJobId(job_id);
+      // TODO: Replace with actual backend call
+      const response = await fetch("http://localhost:8000/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: input, history: messages }),
+      });
+
+      if (!response.ok) throw new Error("Backend error");
+
+      const data = await response.json();
+      const botMsg: Message = { role: "assistant", content: data.response };
+      setMessages((prev) => [...prev, botMsg]);
     } catch (error) {
-      console.error("Failed to start", error);
-      setIsTraining(false);
+      console.error(error);
+      const errorMsg: Message = { role: "assistant", content: "I'm having trouble connecting to the local backend. Is it running?" };
+      setMessages((prev) => [...prev, errorMsg]);
+    } finally {
+      setIsTyping(false);
     }
   };
 
-  const nextStep = () => setStep((s) => s + 1);
-  const prevStep = () => setStep((s) => s - 1);
-
   return (
-    <main className="min-h-screen bg-background p-8 font-sans">
-      <div className="max-w-5xl mx-auto space-y-8">
-        <header className="flex items-center justify-between border-b pb-6">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">NeuroForge</h1>
-            <p className="text-muted-foreground mt-2">
-              Fine-tune LLMs on your own infrastructure with a unified control plane.
-            </p>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 text-green-600 rounded-full text-sm font-medium">
-              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-              Backend Online
-            </div>
-          </div>
-        </header>
-
-        {/* Wizard Steps */}
-        <div className="space-y-8">
-          {/* Step 1: Model Selection */}
-          <div className={`transition-opacity duration-300 ${step === 1 ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm">1</span>
-              Select Base Model
-            </h2>
-            <ModelSelector onSelect={handleModelSelect} />
-            {step === 1 && (
-              <div className="mt-6 flex justify-end">
-                <Button onClick={nextStep} disabled={!selectedModel}>
-                  Next: Configure Dataset
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {/* Step 2: Dataset Configuration */}
-          <div className={`transition-opacity duration-300 ${step === 2 ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm">2</span>
-              Configure Dataset
-            </h2>
-            {step >= 2 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Dataset Source</CardTitle>
-                  <CardDescription>Enter the Hugging Face dataset ID or local path on your server.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="dataset">Dataset Path / ID</Label>
-                    <Input
-                      id="dataset"
-                      placeholder="e.g., iman/custom-dataset or /home/user/data/train.jsonl"
-                      value={datasetPath}
-                      onChange={(e) => setDatasetPath(e.target.value)}
-                    />
-                  </div>
-                </CardContent>
-                {step === 2 && (
-                  <div className="p-6 pt-0 flex justify-between">
-                    <Button variant="ghost" onClick={prevStep}>Back</Button>
-                    <Button onClick={nextStep} disabled={!datasetPath}>Next: Review & Train</Button>
-                  </div>
-                )}
-              </Card>
-            )}
-          </div>
-
-          {/* Step 3: Review and Training */}
-          <div className={`transition-opacity duration-300 ${step === 3 ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-              <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm">3</span>
-              Review & Start
-            </h2>
-            {step >= 3 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Training Configuration</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {!isTraining ? (
-                    <dl className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm bg-muted/50 p-4 rounded-lg">
-                      <div>
-                        <dt className="text-muted-foreground">Base Model</dt>
-                        <dd className="font-medium">{selectedModel?.name} ({selectedModel?.parameters})</dd>
-                      </div>
-                      <div>
-                        <dt className="text-muted-foreground">Dataset</dt>
-                        <dd className="font-medium">{datasetPath}</dd>
-                      </div>
-                      <div>
-                        <dt className="text-muted-foreground">Backend</dt>
-                        <dd className="font-medium">Local (GPU)</dd>
-                      </div>
-                      <div>
-                        <dt className="text-muted-foreground">Estimated VRAM</dt>
-                        <dd className="font-medium">{selectedModel?.recommended_gpu}</dd>
-                      </div>
-                    </dl>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>Training Progress</span>
-                          <span className="font-mono">{trainingStatus?.progress || 0}%</span>
-                        </div>
-                        <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-primary transition-all duration-500 ease-in-out"
-                            style={{ width: `${trainingStatus?.progress || 0}%` }}
-                          />
-                        </div>
-                      </div>
-                      <div className="bg-black text-green-400 font-mono text-xs p-4 rounded-lg h-64 overflow-y-auto border border-green-900 shadow-inner">
-                        {trainingStatus?.logs?.map((log, i) => (
-                          <div key={i}>&gt; {log}</div>
-                        )) || <div className="animate-pulse">Initializing connection...</div>}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-                <div className="p-6 pt-0 flex justify-between">
-                  {!isTraining ? (
-                    <>
-                      <Button variant="ghost" onClick={prevStep}>Back</Button>
-                      <Button size="lg" className="bg-green-600 hover:bg-green-700" onClick={handleStartTraining}>
-                        Start Training Loop
-                      </Button>
-                    </>
-                  ) : (
-                    <Button className="w-full" disabled variant="outline">
-                      {trainingStatus?.status === 'completed' ? 'Training Complete' : 'Training in Progress...'}
-                    </Button>
-                  )}
-                </div>
-              </Card>
-            )}
+    <div className="flex h-screen bg-gray-900 text-gray-100 font-sans overflow-hidden">
+      {/* Sidebar - Hidden on mobile for now, can be toggleable */}
+      <aside className="w-64 bg-black border-r border-gray-800 hidden md:flex flex-col">
+        <div className="p-4">
+          <Button variant="outline" className="w-full justify-start gap-2 border-gray-700 hover:bg-gray-800 text-gray-200" onClick={() => setMessages([{ role: "assistant", content: "Ready to start a new training session." }])}>
+            <Plus size={16} />
+            New Chat
+          </Button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          <div className="text-xs font-semibold text-gray-500 uppercase px-2 mb-2">Today</div>
+          <button className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-800 text-sm truncate transition-colors text-gray-300">
+            New Training Run
+          </button>
+        </div>
+        <div className="p-4 border-t border-gray-800">
+          <div className="flex items-center gap-3 px-2">
+            <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center text-xs font-bold">NF</div>
+            <div className="text-sm font-medium">NeuroForge Local</div>
           </div>
         </div>
-      </div>
-    </main>
+      </aside>
+
+      {/* Main Chat Area */}
+      <main className="flex-1 flex flex-col relative">
+        <header className="h-14 border-b border-gray-800 flex items-center justify-between px-4 md:hidden bg-gray-900 z-10">
+          <Button variant="ghost" size="icon" className="text-gray-400">
+            <Menu size={20} />
+          </Button>
+          <span className="font-semibold text-sm">NeuroForge</span>
+          <Button variant="ghost" size="icon" className="text-gray-400">
+            <Plus size={20} />
+          </Button>
+        </header>
+
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 scroll-smooth">
+          <div className="max-w-3xl mx-auto space-y-6">
+            {messages.map((msg, idx) => (
+              <div key={idx} className={cn("flex gap-4", msg.role === "user" ? "justify-end" : "justify-start")}>
+                {msg.role === "assistant" && (
+                  <div className="w-8 h-8 rounded-full bg-green-600 flex-shrink-0 flex items-center justify-center mt-1">
+                    <Bot size={18} className="text-white" />
+                  </div>
+                )}
+                <div className={cn(
+                  "rounded-2xl px-5 py-3 max-w-[85%] text-sm leading-relaxed",
+                  msg.role === "user"
+                    ? "bg-gray-700 text-white rounded-br-none"
+                    : "bg-transparent text-gray-100 rounded-bl-none"
+                )}>
+                  {msg.content}
+                </div>
+                {msg.role === "user" && (
+                  <div className="w-8 h-8 rounded-full bg-gray-600 flex-shrink-0 flex items-center justify-center mt-1">
+                    <User size={18} className="text-gray-300" />
+                  </div>
+                )}
+              </div>
+            ))}
+            {isTyping && (
+              <div className="flex gap-4">
+                <div className="w-8 h-8 rounded-full bg-green-600 flex-shrink-0 flex items-center justify-center mt-1">
+                  <Bot size={18} className="text-white" />
+                </div>
+                <div className="flex items-center gap-1 h-10 px-4">
+                  <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                  <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                  <span className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce"></span>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        </div>
+
+        <div className="p-4 bg-gray-900 border-t border-gray-800">
+          <div className="max-w-3xl mx-auto relative">
+            <form onSubmit={handleSubmit} className="relative">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Message NeuroForge..."
+                className="w-full bg-gray-800 border-gray-700 text-gray-100 placeholder:text-gray-500 rounded-xl py-6 pr-12 focus-visible:ring-offset-0 focus-visible:ring-gray-600"
+              />
+              <Button
+                type="submit"
+                size="icon"
+                disabled={!input.trim() || isTyping}
+                className={cn("absolute right-2 top-1/2 -translate-y-1/2 rounded-lg transition-all", input.trim() ? "bg-white text-black hover:bg-gray-200" : "bg-gray-700 text-gray-400")}
+              >
+                <Send size={18} />
+              </Button>
+            </form>
+            <div className="text-center mt-2">
+              <p className="text-xs text-gray-600">NeuroForge can make mistakes. Consider checking important information.</p>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }
